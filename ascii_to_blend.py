@@ -6,7 +6,9 @@ import bpy
 
 s = time.time()
 
-with open('b4_bf_ascii.txt') as f:
+files = sys.argv[sys.argv.index("--") + 1:]  # get all args after "--"
+
+with open(files[0]) as f:
   lines = f.readlines()
 
 ncols = int(lines[0].split()[1])
@@ -33,7 +35,7 @@ skip = 5
 for row in range(0, nrows, skip):
   values = lines[row + 6].split()
   for col in range(0, ncols, skip):
-    x = xllcorner + cellsize * (nrows - row)
+    x = xllcorner + cellsize * row
     y = yllcorner + cellsize * col
     elev = float(values[col])
     vert = (x, y, elev)
@@ -56,12 +58,39 @@ for x, row in enumerate(range(0, nrows, skip)):
 
 print("{} faces done, {}s elapsed".format(len(faces), round(time.time() - s)))
 
-mesh_data = bpy.data.meshes.new("b4_bf_mesh")
+mesh_data = bpy.data.meshes.new("mesh")
 mesh_data.from_pydata(verts, [], faces)
 mesh_data.update()  # (calc_edges=True) not needed here
 
-obj = bpy.data.objects.new("b4_bf", mesh_data)
+obj = bpy.data.objects.new("object", mesh_data)
 
 scene = bpy.context.scene
 scene.objects.link(obj)
+
+# animation
+
+obj.shape_key_add()
+obj.data.shape_keys.key_blocks[0].name = files[0]
+
+for k, filename in enumerate(files[1:]):
+    obj.shape_key_add()
+    k += 1
+    obj.data.shape_keys.key_blocks[k].name = filename
+    with open(filename) as f:
+      lines = f.readlines()
+    for x, row in enumerate(range(0, nrows, skip)):
+      values = lines[row + 6].split()
+      for y, col in enumerate(range(0, ncols, skip)):
+        elev = float(values[col])
+        idx = x * ny + y
+        obj.data.shape_keys.key_blocks[k].data[idx].co.z = elev
+
+stepsize = 1
+for k in range(1, len(files)):
+    obj.data.shape_keys.key_blocks[k].value = 0.0
+    obj.data.shape_keys.key_blocks[k].keyframe_insert(data_path='value', frame=k * stepsize)
+    obj.data.shape_keys.key_blocks[k].value = 1.0
+    obj.data.shape_keys.key_blocks[k].keyframe_insert(data_path='value', frame=k * stepsize + stepsize)
+    obj.data.shape_keys.key_blocks[k].value = 0.0
+    obj.data.shape_keys.key_blocks[k].keyframe_insert(data_path='value', frame=k * stepsize + 2 * stepsize)
 
