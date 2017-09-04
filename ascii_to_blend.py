@@ -79,18 +79,31 @@ for k, filename in enumerate(files[1:]):
     with open(filename) as f:
       lines = f.readlines()
     for x, row in enumerate(range(0, nrows, skip)):
+      if len(lines) < nrows * .8 and row > nrows / 2:
+        #rebound
+        row = nrows - row
       values = lines[row + 6].split()
       for y, col in enumerate(range(0, ncols, skip)):
         elev = float(values[col])
         idx = x * ny + y
         obj.data.shape_keys.key_blocks[k].data[idx].co.z = elev
+    print("{} loaded, {}s elapsed".format(filename, round(time.time() - s)))
 
-stepsize = 1
-for k in range(1, len(files)):
-    obj.data.shape_keys.key_blocks[k].value = 0.0
-    obj.data.shape_keys.key_blocks[k].keyframe_insert(data_path='value', frame=k * stepsize)
-    obj.data.shape_keys.key_blocks[k].value = 1.0
-    obj.data.shape_keys.key_blocks[k].keyframe_insert(data_path='value', frame=k * stepsize + stepsize)
-    obj.data.shape_keys.key_blocks[k].value = 0.0
-    obj.data.shape_keys.key_blocks[k].keyframe_insert(data_path='value', frame=k * stepsize + 2 * stepsize)
+frame = 0
+frames = []
+for k, filename in enumerate(files):
+  frames.append(frame)
+  if "C5" in filename:
+    frame += 30
+  else:
+    frame += 90
 
+for k, frame in enumerate(frames):
+  if k > 0:
+    obj.data.shape_keys.key_blocks[k].value = 0.0
+    obj.data.shape_keys.key_blocks[k].keyframe_insert(data_path='value', frame=frames[k - 1])
+  obj.data.shape_keys.key_blocks[k].value = 1.0
+  obj.data.shape_keys.key_blocks[k].keyframe_insert(data_path='value', frame=frames[k])
+  if k < len(frames) - 1:
+    obj.data.shape_keys.key_blocks[k].value = 0.0
+    obj.data.shape_keys.key_blocks[k].keyframe_insert(data_path='value', frame=frames[k + 1])
